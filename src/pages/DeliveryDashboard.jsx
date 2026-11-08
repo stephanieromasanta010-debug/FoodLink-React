@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 function DeliveryDashboard() {
   const [stats, setStats] = useState({ ready: 0, transit: 0, completed: 0 });
   const [recentTasks, setRecentTasks] = useState([]);
 
   useEffect(() => {
-    // Kunin ang orders mula sa API
-    fetch('http://127.0.0.1:3000/api/orders')
+    fetch(`${API_URL}/api/orders`)
       .then(res => res.json())
       .then(data => {
         let ready = 0, transit = 0, completed = 0;
@@ -31,7 +32,7 @@ function DeliveryDashboard() {
           <div className="logo">Food<span>Link</span></div>
           <div className="user-info">
             <span className="role-badge delivery">Delivery</span>
-            <span className="name">Ramon Dela Cruz</span>
+            <span className="name">{JSON.parse(localStorage.getItem('user'))?.name || 'Rider'}</span>
             <Link to="/" className="signout">Sign out</Link>
           </div>
         </div>
@@ -43,7 +44,7 @@ function DeliveryDashboard() {
           </div>
           <div className="content-area">
             <h1>Delivery Dashboard</h1>
-            <p className="page-sub">Ramon Dela Cruz · Today's delivery overview</p>
+            <p className="page-sub">{JSON.parse(localStorage.getItem('user'))?.name || 'Rider'} · Today's delivery overview</p>
 
             <div className="stats-grid">
               <div className="stat-card">

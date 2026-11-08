@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 function DeliveryTasks() {
   const navigate = useNavigate();
   const [user] = useState(() => JSON.parse(localStorage.getItem('user')) || {});
@@ -11,14 +13,9 @@ function DeliveryTasks() {
 
   const fetchOrders = useCallback(() => {
     if (!user.id) return;
-    // Kunin LAHAT ng orders para makita ang "ready" na hindi pa naka-assign
-    fetch(`http://127.0.0.1:3000/api/orders`)
+    fetch(`${API_URL}/api/orders`)
       .then(res => res.json())
       .then(data => {
-        // Ipakita ang orders kung:
-        // 1. "ready" (pwede pang kunin ng kahit sinong rider)
-        // 2. "delivering" at naka-assign sa rider na ito
-        // 3. "delivered" at naka-assign sa rider na ito
         const filtered = data.filter(o => 
           o.status === 'ready' || 
           (o.status === 'delivering' && o.rider_id == user.id) ||
@@ -35,7 +32,7 @@ function DeliveryTasks() {
 
   const handlePickUp = async (id) => {
     try {
-      await fetch('http://127.0.0.1:3000/api/update_order_status', {
+      await fetch(`${API_URL}/api/update_order_status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -44,58 +41,58 @@ function DeliveryTasks() {
           rider_id: user.id 
         })
       });
-      fetchOrders(); // I-refresh ang listahan pagkatapos mag-update
+      fetchOrders();
     } catch {
       alert('Failed to pick up. Make sure LavaLust is running.');
     }
   };
 
   const handleDeliver = async (e) => {
-  e.preventDefault();
-  if (!proofFile) { alert('Please upload a proof of delivery.'); return; }
-  
-  setUploading(true);
-
-  const formData = new FormData();
-  formData.append('file', proofFile);
-  formData.append('upload_preset', 'foodlink_pod');
-
-  try {
-    const cloudinaryRes = await fetch('https://api.cloudinary.com/v1_1/t6rybwv1/image/upload', {
-      method: 'POST',
-      body: formData
-    });
-    const cloudinaryData = await cloudinaryRes.json();
+    e.preventDefault();
+    if (!proofFile) { alert('Please upload a proof of delivery.'); return; }
     
-    if (!cloudinaryData.secure_url) {
-      throw new Error(cloudinaryData.error?.message || 'Cloudinary upload failed');
-    }
+    setUploading(true);
 
-    const response = await fetch('http://127.0.0.1:3000/api/update_order_status', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        id: selectedOrder.id, 
-        status: 'delivered',
-        proof_of_delivery: cloudinaryData.secure_url // <-- Cloudinary URL
-      })
-    });
-    const data = await response.json();
+    const formData = new FormData();
+    formData.append('file', proofFile);
+    formData.append('upload_preset', 'foodlink_pod');
 
-    if (data.status === 'success') {
-      alert('Order Delivered! Proof uploaded.');
-      setSelectedOrder(null);
-      setProofFile(null);
-      fetchOrders();
-    } else {
-      alert('Error: ' + data.message);
+    try {
+      const cloudinaryRes = await fetch('https://api.cloudinary.com/v1_1/t6rybwv1/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const cloudinaryData = await cloudinaryRes.json();
+      
+      if (!cloudinaryData.secure_url) {
+        throw new Error(cloudinaryData.error?.message || 'Cloudinary upload failed');
+      }
+
+      const response = await fetch(`${API_URL}/api/update_order_status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: selectedOrder.id, 
+          status: 'delivered',
+          proof_of_delivery: cloudinaryData.secure_url
+        })
+      });
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        alert('Order Delivered! Proof uploaded.');
+        setSelectedOrder(null);
+        setProofFile(null);
+        fetchOrders();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setUploading(false);
     }
-  } catch (err) {
-    alert('Error: ' + err.message);
-  } finally {
-    setUploading(false);
-  }
-};
+  };
 
   return (
     <div className="app-container">
@@ -159,7 +156,6 @@ function DeliveryTasks() {
               </table>
             </div>
 
-            {/* Modal para sa Proof of Delivery */}
             {selectedOrder && (
               <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
                 <div className="table-section" style={{ maxWidth: '400px', width: '100%', margin: '20px' }}>

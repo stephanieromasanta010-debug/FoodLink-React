@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 function VendorOrders() {
   const navigate = useNavigate();
   const [user] = useState(() => JSON.parse(localStorage.getItem('user')) || {});
@@ -9,21 +11,20 @@ function VendorOrders() {
   useEffect(() => {
     if (!user.id || user.role !== 'vendor') { navigate('/'); return; }
 
-    // Ilagay ang fetch logic sa loob ng useEffect
-    fetch(`http://127.0.0.1:3000/api/orders?vendor_id=${user.id}`)
+    fetch(`${API_URL}/api/orders?vendor_id=${user.id}`)
       .then(res => res.json())
       .then(data => setOrders(data));
   }, [navigate, user.id, user.role]);
 
   const updateStatus = async (id, newStatus) => {
     try {
-      await fetch('http://127.0.0.1:3000/api/update_order_status', {
+      await fetch(`${API_URL}/api/update_order_status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: id, status: newStatus })
       });
-      // I-refresh ang orders pagkatapos mag-update
-      fetch(`http://127.0.0.1:3000/api/orders?vendor_id=${user.id}`)
+      
+      fetch(`${API_URL}/api/orders?vendor_id=${user.id}`)
         .then(res => res.json())
         .then(data => setOrders(data));
     } catch {
@@ -61,7 +62,7 @@ function VendorOrders() {
                     <th>Total</th>
                     <th>Address</th>
                     <th>Status</th>
-                    <th>Proof</th> {/* <-- BAGONG COLUMN */}
+                    <th>Proof</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -76,7 +77,6 @@ function VendorOrders() {
                         <td>{o.delivery_address}</td>
                         <td><span className={`badge ${o.status}`}>{o.status}</span></td>
                         <td>
-                          {/* Kung delivered na at may proof, ipakita ang link */}
                           {o.proof_of_delivery ? (
                             <a 
                               href={o.proof_of_delivery} 

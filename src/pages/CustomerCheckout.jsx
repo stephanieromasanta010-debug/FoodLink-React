@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 let debounceTimer;
 
 function CustomerCheckout() {
@@ -17,18 +19,17 @@ function CustomerCheckout() {
   const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price), 0);
   const total = subtotal + deliveryFee;
 
-  // Function para i-compute ang distance base sa coordinates
   const computeDistance = async (customerLat, customerLng) => {
     setComputingDistance(true);
     const user = JSON.parse(localStorage.getItem('user'));
     const vendorId = cart[0]?.vendor_id || 1;
 
     try {
-      const coordsRes = await fetch(`http://127.0.0.1:3000/api/get_coordinates?user_id=${user.id}&vendor_id=${vendorId}`);
+      const coordsRes = await fetch(`${API_URL}/api/get_coordinates?user_id=${user.id}&vendor_id=${vendorId}`);
       const vendorCoords = await coordsRes.json();
 
       if (vendorCoords.vendor_lat && vendorCoords.vendor_lng) {
-        const distRes = await fetch(`http://127.0.0.1:3000/api/calculate_distance?vendor_lat=${vendorCoords.vendor_lat}&vendor_lng=${vendorCoords.vendor_lng}&customer_lat=${customerLat}&customer_lng=${customerLng}`);
+        const distRes = await fetch(`${API_URL}/api/calculate_distance?vendor_lat=${vendorCoords.vendor_lat}&vendor_lng=${vendorCoords.vendor_lng}&customer_lat=${customerLat}&customer_lng=${customerLng}`);
         const distData = await distRes.json();
 
         if (distData.status === 'success') {
@@ -45,103 +46,96 @@ function CustomerCheckout() {
     }
   };
 
-  // Option 1: Live GPS
   const handleGetLocation = () => {
-  if (!navigator.geolocation) {
-    setLocationStatus('❌ Geolocation not supported.');
-    return;
-  }
+    if (!navigator.geolocation) {
+      setLocationStatus('❌ Geolocation not supported.');
+      return;
+    }
 
-  setLocationStatus('📍 Getting your GPS location...');
+    setLocationStatus('📍 Getting your GPS location...');
 
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      
-      console.log("=== GPS COORDINATES ===");
-      console.log("Latitude:", lat);
-      console.log("Longitude:", lng);
-      console.log("Accuracy:", position.coords.accuracy, "meters");
-      setLocationStatus(`📍 GPS found: ${lat.toFixed(4)}, ${lng.toFixed(4)}. Computing distance...`);
-      
-      try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        const vendorId = cart[0]?.vendor_id || 1;
-
-        // Kunin ang vendor coordinates
-        const coordsRes = await fetch(`http://127.0.0.1:3000/api/get_coordinates?user_id=${user.id}&vendor_id=${vendorId}`);
-        const vendorCoords = await coordsRes.json();
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
         
-        console.log('Vendor coords:', vendorCoords);
+        console.log("=== GPS COORDINATES ===");
+        console.log("Latitude:", lat);
+        console.log("Longitude:", lng);
+        console.log("Accuracy:", position.coords.accuracy, "meters");
+        setLocationStatus(`📍 GPS found: ${lat.toFixed(4)}, ${lng.toFixed(4)}. Computing distance...`);
+        
+        try {
+          const user = JSON.parse(localStorage.getItem('user'));
+          const vendorId = cart[0]?.vendor_id || 1;
 
-        if (!vendorCoords.vendor_lat || !vendorCoords.vendor_lng) {
-          setLocationStatus('❌ Vendor location not found in database.');
-          return;
+          const coordsRes = await fetch(`${API_URL}/api/get_coordinates?user_id=${user.id}&vendor_id=${vendorId}`);
+          const vendorCoords = await coordsRes.json();
+          
+          console.log('Vendor coords:', vendorCoords);
+
+          if (!vendorCoords.vendor_lat || !vendorCoords.vendor_lng) {
+            setLocationStatus('❌ Vendor location not found in database.');
+            return;
+          }
+
+          const distRes = await fetch(`${API_URL}/api/calculate_distance?vendor_lat=${vendorCoords.vendor_lat}&vendor_lng=${vendorCoords.vendor_lng}&customer_lat=${lat}&customer_lng=${lng}`);
+          const distData = await distRes.json();
+          
+          console.log('Distance result:', distData);
+
+          if (distData.status === 'success') {
+            setDistanceKm(distData.distance_km);
+            setDeliveryFee(distData.delivery_fee);
+            setLocationStatus(`✅ ${distData.distance_km} km from vendor (Delivery Fee: ₱${distData.delivery_fee})`);
+          } else {
+            setLocationStatus('❌ Could not compute distance. ' + (distData.message || ''));
+          }
+        } catch (err) {
+          console.error('Distance error:', err);
+          setLocationStatus('❌ Error: ' + err.message);
         }
+      },
+      (error) => {
+        setLocationStatus('❌ Location error: ' + error.message);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
 
-        // Compute distance
-        const distRes = await fetch(`http://127.0.0.1:3000/api/calculate_distance?vendor_lat=${vendorCoords.vendor_lat}&vendor_lng=${vendorCoords.vendor_lng}&customer_lat=${lat}&customer_lng=${lng}`);
-        const distData = await distRes.json();
-        
-        console.log('Distance result:', distData);
+  const handleAddressChange = (e) => {
+    const newAddress = e.target.value;
+    setAddress(newAddress);
 
-        if (distData.status === 'success') {
-          setDistanceKm(distData.distance_km);
-          setDeliveryFee(distData.delivery_fee);
-          setLocationStatus(`✅ ${distData.distance_km} km from vendor (Delivery Fee: ₱${distData.delivery_fee})`);
+    clearTimeout(debounceTimer);
+
+    if (newAddress.length < 5) {
+      setDeliveryFee(0);
+      setDistanceKm(0);
+      setLocationStatus('');
+      return;
+    }
+
+    setLocationStatus('📍 Looking up address...');
+
+    debounceTimer = setTimeout(async () => {
+      try {
+        const geocodeRes = await fetch(`${API_URL}/api/geocode_address?address=${encodeURIComponent(newAddress)}`);
+        const geocodeData = await geocodeRes.json();
+
+        if (geocodeData.status === 'success') {
+          computeDistance(geocodeData.lat, geocodeData.lng);
         } else {
-          setLocationStatus('❌ Could not compute distance. ' + (distData.message || ''));
+          setLocationStatus('❌ Address not found. Please try a more specific address.');
+          setDeliveryFee(0);
+          setDistanceKm(0);
         }
       } catch (err) {
-        console.error('Distance error:', err);
-        setLocationStatus('❌ Error: ' + err.message);
+        console.error(err);
+        setLocationStatus('❌ Failed to look up address.');
       }
-    },
-    (error) => {
-      setLocationStatus('❌ Location error: ' + error.message);
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-  );
-};
-
-  // Option 2: Address input auto-compute
-  // Option 2: Address input auto-compute
-const handleAddressChange = (e) => {
-  const newAddress = e.target.value;
-  setAddress(newAddress);
-
-  // I-clear ang dating timer
-  clearTimeout(debounceTimer);
-
-  if (newAddress.length < 5) {
-    setDeliveryFee(0);
-    setDistanceKm(0);
-    setLocationStatus('');
-    return;
-  }
-
-  setLocationStatus('📍 Looking up address...');
-
-  // Maghintay ng 500ms bago mag-request
-  debounceTimer = setTimeout(async () => {
-    try {
-      const geocodeRes = await fetch(`http://127.0.0.1:3000/api/geocode_address?address=${encodeURIComponent(newAddress)}`);
-      const geocodeData = await geocodeRes.json();
-
-      if (geocodeData.status === 'success') {
-        computeDistance(geocodeData.lat, geocodeData.lng);
-      } else {
-        setLocationStatus('❌ Address not found. Please try a more specific address.');
-        setDeliveryFee(0);
-        setDistanceKm(0);
-      }
-    } catch (err) {
-      console.error(err);
-      setLocationStatus('❌ Failed to look up address.');
-    }
-  }, 500); // 500ms delay
-};
+    }, 500);
+  };
 
   const handleStripeCheckout = async () => {
     if (!address) { alert('Please enter delivery address.'); return; }
@@ -152,7 +146,7 @@ const handleAddressChange = (e) => {
     const user = JSON.parse(localStorage.getItem('user'));
 
     try {
-      const response = await fetch('http://127.0.0.1:3000/api/create_checkout_session', {
+      const response = await fetch(`${API_URL}/api/create_checkout_session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -182,7 +176,7 @@ const handleAddressChange = (e) => {
     const user = JSON.parse(localStorage.getItem('user'));
 
     try {
-      const response = await fetch('http://127.0.0.1:3000/api/place_order', {
+      const response = await fetch(`${API_URL}/api/place_order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -255,7 +249,6 @@ const handleAddressChange = (e) => {
             <div className="table-section" style={{ maxWidth: '600px' }}>
               <h3>Delivery Details</h3>
               
-              {/* Option 1: Live GPS */}
               <div className="form-group">
                 <label>Option 1: Use My Current Location</label>
                 <button className="btn-primary" onClick={handleGetLocation} disabled={computingDistance} style={{ background: '#2563eb' }}>
@@ -265,7 +258,6 @@ const handleAddressChange = (e) => {
 
               <div style={{ textAlign: 'center', margin: '15px 0', color: '#94a3b8', fontSize: '13px' }}>— OR —</div>
 
-              {/* Option 2: Address Input */}
               <div className="form-group">
                 <label>Option 2: Enter Delivery Address</label>
                 <div className="input-wrapper">

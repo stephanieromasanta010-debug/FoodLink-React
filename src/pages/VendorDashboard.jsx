@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function VendorDashboard() {
@@ -14,7 +16,7 @@ function VendorDashboard() {
 
   const fetchData = useCallback(() => {
     if (!user.id) return;
-    fetch(`http://127.0.0.1:3000/api/orders?vendor_id=${user.id}`)
+    fetch(`${API_URL}/api/orders?vendor_id=${user.id}`)
       .then(res => res.json())
       .then(data => {
         let pending = 0, preparing = 0, sales = 0;
@@ -33,7 +35,6 @@ function VendorDashboard() {
         setStats({ pending, preparing, sales });
         setRecentOrders(data.slice(0, 5));
 
-        // Chart data
         setChartData({
           labels: Object.keys(salesByDate),
           datasets: [{

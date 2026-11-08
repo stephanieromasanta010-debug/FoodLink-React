@@ -1,22 +1,28 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 function CustomerBrowse() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [successMsg, setSuccessMsg] = useState('');
-  const [search, setSearch] = useState(''); // <-- BAGONG STATE PARA SA SEARCH
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user || user.role !== 'customer') { navigate('/'); return; }
-    fetch('http://127.0.0.1:3000/api/products').then(res => res.json()).then(data => setProducts(data));
+    
+    // Ginamit na ang API_URL imbes na hardcoded na 127.0.0.1
+    fetch(`${API_URL}/api/products`)
+      .then(res => res.json())
+      .then(data => setProducts(data));
   }, [navigate]);
 
-  // <-- BAGONG FILTER LOGIC
+  // "Starts with" filter para sa search
   const filteredProducts = products.filter(p => 
-  p.name.toLowerCase().startsWith(search.toLowerCase())
-);
+    p.name.toLowerCase().startsWith(search.toLowerCase())
+  );
 
   const handleAddToCart = (product, quantity) => {
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
@@ -79,7 +85,7 @@ function CustomerBrowse() {
               </div>
             )}
 
-            {/* PRODUCT GRID - ginagamit na ang filteredProducts */}
+            {/* PRODUCT GRID */}
             {filteredProducts.length === 0 ? (
               <p>No products found for "{search}".</p>
             ) : (

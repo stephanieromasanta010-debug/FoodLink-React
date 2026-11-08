@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 function OrderDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -8,8 +10,7 @@ function OrderDetails() {
   const [items, setItems] = useState([]);
 
   useEffect(() => {
-    // Kunin ang order details
-    fetch(`http://127.0.0.1:3000/api/order_details?id=${id}`)
+    fetch(`${API_URL}/api/order_details?id=${id}`)
       .then(res => res.json())
       .then(data => {
         if (data.order) { setOrder(data.order); setItems(data.items); }
@@ -42,15 +43,15 @@ function OrderDetails() {
             </button>
             <h1>Order #{order.id}</h1>
             <p className="page-sub">
-                Placed on {new Date(order.created_at.replace(' ', 'T')).toLocaleString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'UTC' // <-- ITO ANG MAGPAPATIGIL SA CONVERSION
-                })}
-                </p>
+              Placed on {new Date(order.created_at.replace(' ', 'T')).toLocaleString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'UTC'
+              })}
+            </p>
 
             <div className="table-section">
               <h3>Items</h3>

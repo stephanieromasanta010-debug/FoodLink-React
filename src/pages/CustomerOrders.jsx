@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 function CustomerOrders() {
   const [orders, setOrders] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -10,7 +12,7 @@ function CustomerOrders() {
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user) return;
     
-    fetch(`http://127.0.0.1:3000/api/orders?customer_id=${user.id}`)
+    fetch(`${API_URL}/api/orders?customer_id=${user.id}`)
       .then(res => res.json())
       .then(data => setOrders(data));
   };
@@ -21,7 +23,7 @@ function CustomerOrders() {
     if (sessionId && !verifiedRef.current) {
       verifiedRef.current = true;
       
-      fetch(`http://127.0.0.1:3000/api/verify_payment?session_id=${sessionId}`)
+      fetch(`${API_URL}/api/verify_payment?session_id=${sessionId}`)
         .then(res => res.json())
         .then(data => {
           if (data.status === 'success') {
@@ -67,7 +69,7 @@ function CustomerOrders() {
                     <th>Total</th>
                     <th>Address</th>
                     <th>Payment Method</th>
-                    <th>Payment Status</th> {/* <-- BAGONG COLUMN */}
+                    <th>Payment Status</th>
                     <th>Status</th>
                     <th>Proof of Delivery</th>
                     <th>Action</th>
@@ -84,7 +86,6 @@ function CustomerOrders() {
                         <td>{o.delivery_address}</td>
                         <td>{o.payment_method || 'N/A'}</td>
                         <td>
-                          {/* PAYMENT STATUS: Paid (green) o Unpaid (yellow) */}
                           <span className={`badge ${o.payment_status === 'paid' ? 'delivered' : 'pending'}`}>
                             {o.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
                           </span>

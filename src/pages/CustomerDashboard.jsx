@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 function CustomerDashboard() {
   const [stats, setStats] = useState({ active_orders: 0, completed_orders: 0, total_spent: 0 });
   const [recentOrders, setRecentOrders] = useState([]);
   const [user] = useState(() => JSON.parse(localStorage.getItem('user')) || {});
 
-
   useEffect(() => {
-    // Kunin ang orders mula sa API
-    fetch('http://127.0.0.1:3000/api/orders?customer_id=1')
+    if (!user.id) return;
+
+    fetch(`${API_URL}/api/orders?customer_id=${user.id}`)
       .then(res => res.json())
       .then(data => {
-        // Compute stats base sa orders
         let active = 0;
         let completed = 0;
         let spent = 0;
@@ -25,7 +26,7 @@ function CustomerDashboard() {
         setStats({ active_orders: active, completed_orders: completed, total_spent: spent });
         setRecentOrders(data.slice(0, 3));
       });
-  }, []);
+  }, [user.id]);
 
   return (
     <div className="app-container">

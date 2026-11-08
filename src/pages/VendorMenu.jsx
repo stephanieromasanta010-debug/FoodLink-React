@@ -1,18 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 function VendorMenu() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ id: null, name: '', description: '', price: '' });
-  const [search, setSearch] = useState(''); // <-- BAGONG STATE PARA SA SEARCH
+  const [search, setSearch] = useState('');
 
-  // Kunin ang totoong user para sa vendor_id
   const [user] = useState(() => JSON.parse(localStorage.getItem('user')) || {});
 
   const fetchProducts = useCallback(() => {
-    fetch('http://127.0.0.1:3000/api/products')
+    fetch(`${API_URL}/api/products`)
       .then(res => res.json())
       .then(data => setProducts(data));
   }, []);
@@ -22,10 +23,9 @@ function VendorMenu() {
     fetchProducts();
   }, [navigate, user.id, user.role, fetchProducts]);
 
-  // <-- BAGONG FILTER LOGIC
   const filteredProducts = products.filter(p => 
-  p.name.toLowerCase().startsWith(search.toLowerCase())
-);
+    p.name.toLowerCase().startsWith(search.toLowerCase())
+  );
 
   const handleAdd = () => {
     setFormData({ id: null, name: '', description: '', price: '' });
@@ -39,18 +39,18 @@ function VendorMenu() {
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      await fetch(`http://127.0.0.1:3000/api/delete_product?id=${id}`);
+      await fetch(`${API_URL}/api/delete_product?id=${id}`);
       fetchProducts();
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const url = formData.id ? 'http://127.0.0.1:3000/api/update_product' : 'http://127.0.0.1:3000/api/add_product';
+    const url = formData.id ? `${API_URL}/api/update_product` : `${API_URL}/api/add_product`;
     await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...formData, vendor_id: user.id }) // <-- Gamitin ang totoong user.id
+      body: JSON.stringify({ ...formData, vendor_id: user.id })
     });
     setShowForm(false);
     fetchProducts();
@@ -80,7 +80,6 @@ function VendorMenu() {
               <button className="btn-primary" style={{ width: 'auto', padding: '10px 20px' }} onClick={handleAdd}>+ Add Product</button>
             </div>
 
-            {/* SEARCH BAR */}
             <div style={{ marginBottom: '20px' }}>
               <input 
                 type="text" 
@@ -98,7 +97,6 @@ function VendorMenu() {
               />
             </div>
 
-            {/* Form para sa Add/Edit */}
             {showForm && (
               <div className="table-section">
                 <form onSubmit={handleSubmit}>
@@ -122,7 +120,6 @@ function VendorMenu() {
               </div>
             )}
 
-            {/* Products Table - gamit na ang filteredProducts */}
             <div className="table-section">
               <table>
                 <thead><tr><th>Name</th><th>Description</th><th>Price</th><th>Actions</th></tr></thead>

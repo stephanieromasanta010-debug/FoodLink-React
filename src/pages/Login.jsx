@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
+
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,7 +14,7 @@ function Login() {
     setError('');
 
     try {
-      const response = await fetch('http://127.0.0.1:3000/api/login', {
+      const response = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -21,10 +23,8 @@ function Login() {
       const data = await response.json();
 
       if (data.status === 'success') {
-        // 1. I-SAVE ANG TOTOONG USER SA LOCALSTORAGE
         localStorage.setItem('user', JSON.stringify(data.user));
 
-        // 2. I-redirect base sa role
         if (data.user.role === 'customer') navigate('/customer');
         if (data.user.role === 'vendor') navigate('/vendor');
         if (data.user.role === 'delivery') navigate('/delivery');
