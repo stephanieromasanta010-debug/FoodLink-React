@@ -159,7 +159,14 @@ function CustomerCheckout() {
         })
       });
       const data = await response.json();
-      if (data.url) window.location.href = data.url;
+      
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        // Ipapakita nito ang totoong error galing Render
+        alert("Stripe Error: " + (data.error || data.message || "Walang URL na nabalik."));
+        console.error("Backend response:", data);
+      }
     } catch {
       alert('Network error.');
     } finally {
